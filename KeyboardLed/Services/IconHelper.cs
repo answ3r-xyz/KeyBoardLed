@@ -5,97 +5,97 @@ using System.Drawing.Text;
 
 namespace KeyboardLed.Services
 {
+    /// <summary>
+    /// Optimalizált icon helper - előre generált cached ikonokkal (8 állapot)
+    /// </summary>
     public static class IconHelper
     {
+        // Cached icons - 8 lehetséges állapot (2^3)
+        private static readonly Icon[] _cachedIcons = new Icon[8];
+        private static bool _initialized;
+        
+        // Cached colors
+        private static readonly Color OnColor = Color.FromArgb(50, 255, 100);
+        private static readonly Color OffColor = Color.FromArgb(60, 60, 65);
+        private static readonly Color BgColor = Color.FromArgb(30, 30, 35);
+        
         /// <summary>
-        /// Creates a clean, modern keyboard LED indicator tray icon (16x16)
-        /// Shows 3 LED indicators: N, C, S with colors based on state
+        /// Inicializálja az összes lehetséges ikont (8 állapot)
         /// </summary>
-        public static Icon CreateTrayIcon(bool numLock = true, bool capsLock = false, bool scrollLock = false)
+        public static void Initialize()
         {
-            // Create multi-resolution icon for better display
-            using var bitmap16 = CreateTrayBitmap(16, numLock, capsLock, scrollLock);
-            using var bitmap32 = CreateTrayBitmap(32, numLock, capsLock, scrollLock);
+            if (_initialized) return;
             
-            // Use the 16x16 for tray
-            IntPtr hIcon = bitmap16.GetHicon();
+            for (int i = 0; i < 8; i++)
+            {
+                bool num = (i & 1) != 0;
+                bool caps = (i & 2) != 0;
+                bool scroll = (i & 4) != 0;
+                _cachedIcons[i] = CreateIconInternal(num, caps, scroll);
+            }
+            _initialized = true;
+        }
+        
+        /// <summary>
+        /// Visszaad egy cached ikont az állapot alapján - NINCS allokáció!
+        /// </summary>
+        public static Icon GetTrayIcon(KeyboardState state)
+        {
+            if (!_initialized) Initialize();
+            return _cachedIcons[state.ToIndex()];
+        }
+        
+        /// <summary>
+        /// Visszaad egy cached ikont bool értékek alapján
+        /// </summary>
+        public static Icon GetTrayIcon(bool numLock, bool capsLock, bool scrollLock)
+        {
+            if (!_initialized) Initialize();
+            int index = (numLock ? 1 : 0) | (capsLock ? 2 : 0) | (scrollLock ? 4 : 0);
+            return _cachedIcons[index];
+        }
+        
+        // Legacy compatibility
+        public static Icon CreateTrayIcon(bool numLock = true, bool capsLock = false, bool scrollLock = false)
+            => GetTrayIcon(numLock, capsLock, scrollLock);
+        
+        private static Icon CreateIconInternal(bool numLock, bool capsLock, bool scrollLock)
+        {
+            using var bitmap = new Bitmap(16, 16);
+            using var g = Graphics.FromImage(bitmap);
+            
+            g.SmoothingMode = SmoothingMode.HighSpeed;
+            g.Clear(BgColor);
+            
+            // LED bars - egyszerűsített rajzolás
+            const int barHeight = 3;
+            const int barWidth = 12;
+            const int x = 2;
+            const int gap = 2;
+            
+            using var onBrush = new SolidBrush(OnColor);
+            using var offBrush = new SolidBrush(OffColor);
+            
+            g.FillRectangle(numLock ? onBrush : offBrush, x, 2, barWidth, barHeight);
+            g.FillRectangle(capsLock ? onBrush : offBrush, x, 2 + barHeight + gap, barWidth, barHeight);
+            g.FillRectangle(scrollLock ? onBrush : offBrush, x, 2 + (barHeight + gap) * 2, barWidth, barHeight);
+            
+            IntPtr hIcon = bitmap.GetHicon();
             return Icon.FromHandle(hIcon);
         }
         
-        private static Bitmap CreateTrayBitmap(int size, bool numLock, bool capsLock, bool scrollLock)
+        /// <summary>
+        /// Felszabadítja a cached ikonokat
+        /// </summary>
+        public static void Dispose()
         {
-            var bitmap = new Bitmap(size, size);
-            using var g = Graphics.FromImage(bitmap);
+            if (!_initialized) return;
             
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            g.Clear(Color.Transparent);
-            
-            // Dark background for visibility
-            using var bgBrush = new SolidBrush(Color.FromArgb(30, 30, 35));
-            g.FillRectangle(bgBrush, 0, 0, size, size);
-            
-            // LED colors
-            var onColor = Color.FromArgb(50, 255, 100);    // Bright green
-            var offColor = Color.FromArgb(60, 60, 65);     // Dark gray
-            
-            if (size == 16)
+            foreach (var icon in _cachedIcons)
             {
-                // 16x16: Three horizontal bars
-                int barHeight = 3;
-                int barWidth = 12;
-                int x = 2;
-                int gap = 2;
-                
-                // Num Lock bar
-                using var numBrush = new SolidBrush(numLock ? onColor : offColor);
-                g.FillRectangle(numBrush, x, 2, barWidth, barHeight);
-                
-                // Caps Lock bar
-                using var capsBrush = new SolidBrush(capsLock ? onColor : offColor);
-                g.FillRectangle(capsBrush, x, 2 + barHeight + gap, barWidth, barHeight);
-                
-                // Scroll Lock bar
-                using var scrollBrush = new SolidBrush(scrollLock ? onColor : offColor);
-                g.FillRectangle(scrollBrush, x, 2 + (barHeight + gap) * 2, barWidth, barHeight);
+                icon?.Dispose();
             }
-            else
-            {
-                // 32x32: Three circles with letters
-                int ledSize = 8;
-                int y = 12;
-                int spacing = 10;
-                int startX = 3;
-                
-                DrawLedCircle(g, startX, y, ledSize, numLock, onColor, offColor);
-                DrawLedCircle(g, startX + spacing, y, ledSize, capsLock, onColor, offColor);
-                DrawLedCircle(g, startX + spacing * 2, y, ledSize, scrollLock, onColor, offColor);
-            }
-            
-            return bitmap;
-        }
-        
-        private static void DrawLedCircle(Graphics g, int x, int y, int size, bool isOn, Color onColor, Color offColor)
-        {
-            var color = isOn ? onColor : offColor;
-            
-            // Glow effect
-            if (isOn)
-            {
-                using var glowBrush = new SolidBrush(Color.FromArgb(80, onColor));
-                g.FillEllipse(glowBrush, x - 1, y - 1, size + 2, size + 2);
-            }
-            
-            // Main circle
-            using var brush = new SolidBrush(color);
-            g.FillEllipse(brush, x, y, size, size);
-            
-            // Highlight
-            if (isOn)
-            {
-                using var highlightBrush = new SolidBrush(Color.FromArgb(120, 255, 255, 255));
-                g.FillEllipse(highlightBrush, x + 1, y + 1, size / 3, size / 3);
-            }
+            _initialized = false;
         }
     }
 }

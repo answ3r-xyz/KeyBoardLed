@@ -10,7 +10,7 @@
       "KeyboardLed/1.0.0": {
         "dependencies": {
           "Hardcodet.NotifyIcon.Wpf": "1.1.0",
-          "Microsoft.NET.ILLink.Tasks": "8.0.23"
+          "System.Drawing.Common": "8.0.0"
         },
         "runtime": {
           "KeyboardLed.dll": {}
@@ -24,7 +24,12 @@
           }
         }
       },
-      "Microsoft.NET.ILLink.Tasks/8.0.23": {}
+      "Microsoft.Win32.SystemEvents/8.0.0": {},
+      "System.Drawing.Common/8.0.0": {
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "8.0.0"
+        }
+      }
     }
   },
   "libraries": {
@@ -40,12 +45,19 @@
       "path": "hardcodet.notifyicon.wpf/1.1.0",
       "hashPath": "hardcodet.notifyicon.wpf.1.1.0.nupkg.sha512"
     },
-    "Microsoft.NET.ILLink.Tasks/8.0.23": {
+    "Microsoft.Win32.SystemEvents/8.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-GqHiB1HbbODWPbY/lc5xLQH8siEEhNA0ptpJCC6X6adtAYNEzu5ZlqV3YHA3Gh7fuEwgA8XqVwMtH2KNtuQM1Q==",
-      "path": "microsoft.net.illink.tasks/8.0.23",
-      "hashPath": "microsoft.net.illink.tasks.8.0.23.nupkg.sha512"
+      "sha512": "sha512-9opKRyOKMCi2xJ7Bj7kxtZ1r9vbzosMvRrdEhVhDz8j8MoBGgB+WmC94yH839NPH+BclAjtQ/pyagvi/8gDLkw==",
+      "path": "microsoft.win32.systemevents/8.0.0",
+      "hashPath": "microsoft.win32.systemevents.8.0.0.nupkg.sha512"
+    },
+    "System.Drawing.Common/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JkbHJjtI/dWc5dfmEdJlbe3VwgZqCkZRtfuWFh5GOv0f+gGCfBtzMpIVkmdkj2AObO9y+oiOi81UGwH3aBYuqA==",
+      "path": "system.drawing.common/8.0.0",
+      "hashPath": "system.drawing.common.8.0.0.nupkg.sha512"
     }
   }
 }

@@ -15,6 +15,10 @@ namespace KeyboardLed.Views
         private Settings _settings;
         private DispatcherTimer? _hideTimer;
         
+        // Cached brushes - only recreated when settings change
+        private SolidColorBrush _onBrush = null!;
+        private SolidColorBrush _offBrush = null!;
+        
         // For click-through when not dragging
         private const int WS_EX_TRANSPARENT = 0x00000020;
         private const int WS_EX_TOOLWINDOW = 0x00000080;  // Hide from Alt+Tab
@@ -122,6 +126,12 @@ namespace KeyboardLed.Views
             CapsLockText.Foreground = textBrush;
             ScrollLockText.Foreground = textBrush;
             
+            // Cache brushes for UpdateState - only recreated when settings change
+            _onBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_settings.OverlayBodyColor));
+            _offBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_settings.OverlayOffColor));
+            _onBrush.Freeze();
+            _offBrush.Freeze();
+            
             // Visibility settings
             NumLockIndicator.Visibility = _settings.OverlayShowNumLock ? Visibility.Visible : Visibility.Collapsed;
             CapsLockIndicator.Visibility = _settings.OverlayShowCapsLock ? Visibility.Visible : Visibility.Collapsed;
@@ -130,13 +140,10 @@ namespace KeyboardLed.Views
 
         public void UpdateState(KeyboardState state)
         {
-            var onBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_settings.OverlayBodyColor));
-            var offBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(_settings.OverlayOffColor));
-            
             // Update Num Lock
             if (_settings.OverlayShowNumLock)
             {
-                NumLockIndicator.Background = state.NumLock ? onBrush : offBrush;
+                NumLockIndicator.Background = state.NumLock ? _onBrush : _offBrush;
                 NumLockText.Text = state.NumLock ? $"{_settings.NumLockName} ON" : $"{_settings.NumLockName} OFF";
                 NumLockIndicator.Visibility = Visibility.Visible;
             }
@@ -144,7 +151,7 @@ namespace KeyboardLed.Views
             // Update Caps Lock
             if (_settings.OverlayShowCapsLock)
             {
-                CapsLockIndicator.Background = state.CapsLock ? onBrush : offBrush;
+                CapsLockIndicator.Background = state.CapsLock ? _onBrush : _offBrush;
                 CapsLockText.Text = state.CapsLock ? $"{_settings.CapsLockName} ON" : $"{_settings.CapsLockName} OFF";
                 CapsLockIndicator.Visibility = Visibility.Visible;
             }
@@ -152,7 +159,7 @@ namespace KeyboardLed.Views
             // Update Scroll Lock
             if (_settings.OverlayShowScrollLock)
             {
-                ScrollLockIndicator.Background = state.ScrollLock ? onBrush : offBrush;
+                ScrollLockIndicator.Background = state.ScrollLock ? _onBrush : _offBrush;
                 ScrollLockText.Text = state.ScrollLock ? $"{_settings.ScrollLockName} ON" : $"{_settings.ScrollLockName} OFF";
                 ScrollLockIndicator.Visibility = Visibility.Visible;
             }

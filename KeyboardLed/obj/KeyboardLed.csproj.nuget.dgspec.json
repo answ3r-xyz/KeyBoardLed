@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {}
+    "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {
+    "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
+        "projectUniqueName": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
         "projectName": "KeyboardLed",
-        "projectPath": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
+        "projectPath": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
         "packagesPath": "C:\\Users\\Peter\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\obj\\",
+        "outputPath": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Peter\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -69,6 +69,20 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.23, 8.0.23]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.23, 8.0.23]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[8.0.23, 8.0.23]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"

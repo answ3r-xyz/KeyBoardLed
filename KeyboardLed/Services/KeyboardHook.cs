@@ -3,11 +3,22 @@ using System.Runtime.InteropServices;
 
 namespace KeyboardLed.Services
 {
-    public class KeyboardState
+    /// <summary>
+    /// Struct a heap allokáció elkerülésére - minden polling-nál újrahasználható
+    /// </summary>
+    public readonly struct KeyboardState
     {
-        public bool NumLock { get; set; }
-        public bool CapsLock { get; set; }
-        public bool ScrollLock { get; set; }
+        public bool NumLock { get; init; }
+        public bool CapsLock { get; init; }
+        public bool ScrollLock { get; init; }
+        
+        /// <summary>
+        /// Index alapú elérés a cached icon-okhoz (0-7)
+        /// </summary>
+        public int ToIndex() => (NumLock ? 1 : 0) | (CapsLock ? 2 : 0) | (ScrollLock ? 4 : 0);
+        
+        public bool Equals(KeyboardState other) => 
+            NumLock == other.NumLock && CapsLock == other.CapsLock && ScrollLock == other.ScrollLock;
     }
 
     /// <summary>
@@ -67,9 +78,9 @@ namespace KeyboardLed.Services
         {
             return new KeyboardState
             {
-                NumLock = (GetKeyState(VK_NUMLOCK) & 0x0001) != 0,
-                CapsLock = (GetKeyState(VK_CAPITAL) & 0x0001) != 0,
-                ScrollLock = (GetKeyState(VK_SCROLL) & 0x0001) != 0
+                NumLock = (GetKeyState(VK_NUMLOCK) & 1) != 0,
+                CapsLock = (GetKeyState(VK_CAPITAL) & 1) != 0,
+                ScrollLock = (GetKeyState(VK_SCROLL) & 1) != 0
             };
         }
 

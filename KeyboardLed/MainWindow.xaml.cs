@@ -26,6 +26,19 @@ namespace KeyboardLed
         private MenuItem _trayNumLock = null!;
         private MenuItem _trayCapsLock = null!;
         private MenuItem _trayScrollLock = null!;
+        
+        // Cached brushes - nem kell minden frissítésnél újat létrehozni
+        private static readonly System.Windows.Media.SolidColorBrush OnBrush = 
+            new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#32CD32"));
+        private static readonly System.Windows.Media.SolidColorBrush OffBrush = 
+            new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6B6B"));
+        
+        static MainWindow()
+        {
+            // Freeze brushes for better performance (thread-safe, no cloning needed)
+            OnBrush.Freeze();
+            OffBrush.Freeze();
+        }
 
         // For simulating key presses
         [DllImport("user32.dll")]
@@ -40,6 +53,9 @@ namespace KeyboardLed
         public MainWindow()
         {
             InitializeComponent();
+            
+            // Initialize cached icons
+            IconHelper.Initialize();
             
             // Create and set tray icon
             CreateTrayIcon();
@@ -59,9 +75,9 @@ namespace KeyboardLed
             _keyboardHook.Start();
             
             // Start polling timer for reliable state detection
-            // Csak polling-ot használunk, ez mindig a valós állapotot adja vissza
+            // 50ms (~20fps) - elég gyors a felhasználói élményhez, de kevesebb CPU terhelés
             _pollTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Send);
-            _pollTimer.Interval = TimeSpan.FromMilliseconds(16); // ~60fps, gyors reakció
+            _pollTimer.Interval = TimeSpan.FromMilliseconds(50);
             _pollTimer.Tick += PollTimer_Tick;
             _pollTimer.Start();
             
@@ -154,10 +170,8 @@ namespace KeyboardLed
         
         private void UpdateTrayIcon(KeyboardState state)
         {
-            // Update tray icon to reflect current LED states
-            var oldIcon = TrayIcon.Icon;
-            TrayIcon.Icon = IconHelper.CreateTrayIcon(state.NumLock, state.CapsLock, state.ScrollLock);
-            oldIcon?.Dispose();
+            // Use cached icon - no disposal needed (icons are managed by IconHelper)
+            TrayIcon.Icon = IconHelper.GetTrayIcon(state);
         }
 
         private void LoadSettingsToUI()
@@ -213,12 +227,9 @@ namespace KeyboardLed
 
         private void UpdateStateDisplay(KeyboardState state)
         {
-            var onBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#32CD32"));
-            var offBrush = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FF6B6B"));
-            
-            NumLockState.Background = state.NumLock ? onBrush : offBrush;
-            CapsLockState.Background = state.CapsLock ? onBrush : offBrush;
-            ScrollLockState.Background = state.ScrollLock ? onBrush : offBrush;
+            NumLockState.Background = state.NumLock ? OnBrush : OffBrush;
+            CapsLockState.Background = state.CapsLock ? OnBrush : OffBrush;
+            ScrollLockState.Background = state.ScrollLock ? OnBrush : OffBrush;
             
             BtnNumLock.Content = state.NumLock ? "🟢 Num Lock" : "⚪ Num Lock";
             BtnCapsLock.Content = state.CapsLock ? "🟢 Caps Lock" : "⚪ Caps Lock";
@@ -408,6 +419,7 @@ namespace KeyboardLed
             _keyboardHook.Dispose();
             _overlayWindow.Close();
             TrayIcon.Dispose();
+            IconHelper.Dispose();  // Clean up cached icons
             Application.Current.Shutdown();
         }
 
