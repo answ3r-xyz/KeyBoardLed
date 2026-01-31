@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {}
+    "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {
+    "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
+        "projectUniqueName": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
         "projectName": "KeyboardLed",
-        "projectPath": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
+        "projectPath": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\KeyboardLed.csproj",
         "packagesPath": "C:\\Users\\Peter\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\obj\\",
+        "outputPath": "c:\\Users\\Peter\\Documents\\GitHub\\KeyBoardLed\\KeyboardLed\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Peter\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -47,6 +47,12 @@
               "target": "Package",
               "version": "[1.1.0, )"
             },
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.23, )",
+              "autoReferenced": true
+            },
             "System.Drawing.Common": {
               "target": "Package",
               "version": "[8.0.0, )"
@@ -72,6 +78,11 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.417/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

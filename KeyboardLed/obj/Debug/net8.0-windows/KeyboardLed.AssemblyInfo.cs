@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Keyboard LED Indicator - Shows Num Lock, Caps Lock, Scroll Lock states")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c3081526d14a4d41e780eabf7911e2f1bd61c885")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+68c90de28da9ca74208df0e8744f8eaebe79f905")]
 [assembly: System.Reflection.AssemblyProductAttribute("KeyboardLed")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KeyboardLed")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

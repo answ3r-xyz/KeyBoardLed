@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using System;
-using System.Reflection;
 
 namespace KeyboardLed.Services
 {
@@ -31,7 +30,7 @@ namespace KeyboardLed.Services
 
                 if (enable)
                 {
-                    var exePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+                    var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory + "KeyboardLed.exe";
                     key.SetValue(AppName, $"\"{exePath}\" --minimized");
                 }
                 else

@@ -31,6 +31,11 @@ namespace KeyboardLed.Models
         // Overlay size
         public string OverlaySize { get; set; } = "Normal"; // Small, Normal, Large
         
+        // Custom label names
+        public string NumLockName { get; set; } = "Num Lock";
+        public string CapsLockName { get; set; } = "Caps Lock";
+        public string ScrollLockName { get; set; } = "Scroll Lock";
+        
         // Tray icon settings
         public bool ShowTrayIcon { get; set; } = true;
         

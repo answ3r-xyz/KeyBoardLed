@@ -14,17 +14,23 @@ namespace KeyboardLed.Views
     {
         private Settings _settings;
         private DispatcherTimer? _hideTimer;
-        private bool _isDragging = false;
         
         // For click-through when not dragging
         private const int WS_EX_TRANSPARENT = 0x00000020;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;  // Hide from Alt+Tab
         private const int GWL_EXSTYLE = -20;
+        
+        // For hiding from screen capture (NVIDIA, OBS, etc.)
+        private const int WDA_EXCLUDEFROMCAPTURE = 0x00000011;
 
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hwnd, int index);
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+        
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowDisplayAffinity(IntPtr hwnd, int dwAffinity);
 
         public OverlayWindow(Settings settings)
         {
@@ -39,8 +45,22 @@ namespace KeyboardLed.Views
 
         private void OverlayWindow_SourceInitialized(object? sender, EventArgs e)
         {
-            // Make window click-through by default
-            SetClickThrough(true);
+            var hwnd = new WindowInteropHelper(this).Handle;
+            
+            // Make window click-through and hide from Alt+Tab
+            var extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
+            
+            // Hide from screen capture (NVIDIA ShadowPlay, OBS, etc.)
+            // This requires Windows 10 version 2004 or later
+            try
+            {
+                SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+            }
+            catch
+            {
+                // Older Windows version, ignore
+            }
         }
 
         private void OverlayWindow_Loaded(object sender, RoutedEventArgs e)
@@ -117,7 +137,7 @@ namespace KeyboardLed.Views
             if (_settings.OverlayShowNumLock)
             {
                 NumLockIndicator.Background = state.NumLock ? onBrush : offBrush;
-                NumLockText.Text = state.NumLock ? "Num Lock ON" : "Num Lock OFF";
+                NumLockText.Text = state.NumLock ? $"{_settings.NumLockName} ON" : $"{_settings.NumLockName} OFF";
                 NumLockIndicator.Visibility = Visibility.Visible;
             }
             
@@ -125,7 +145,7 @@ namespace KeyboardLed.Views
             if (_settings.OverlayShowCapsLock)
             {
                 CapsLockIndicator.Background = state.CapsLock ? onBrush : offBrush;
-                CapsLockText.Text = state.CapsLock ? "Caps Lock ON" : "Caps Lock OFF";
+                CapsLockText.Text = state.CapsLock ? $"{_settings.CapsLockName} ON" : $"{_settings.CapsLockName} OFF";
                 CapsLockIndicator.Visibility = Visibility.Visible;
             }
             
@@ -133,20 +153,23 @@ namespace KeyboardLed.Views
             if (_settings.OverlayShowScrollLock)
             {
                 ScrollLockIndicator.Background = state.ScrollLock ? onBrush : offBrush;
-                ScrollLockText.Text = state.ScrollLock ? "Scroll Lock ON" : "Scroll Lock OFF";
+                ScrollLockText.Text = state.ScrollLock ? $"{_settings.ScrollLockName} ON" : $"{_settings.ScrollLockName} OFF";
                 ScrollLockIndicator.Visibility = Visibility.Visible;
             }
             
-            // Hide when all OFF
-            bool allOff = !state.NumLock && !state.CapsLock && !state.ScrollLock;
+            // Hide when all OFF - only check the ones that are enabled to show
+            bool numOff = !_settings.OverlayShowNumLock || !state.NumLock;
+            bool capsOff = !_settings.OverlayShowCapsLock || !state.CapsLock;
+            bool scrollOff = !_settings.OverlayShowScrollLock || !state.ScrollLock;
+            bool allOff = numOff && capsOff && scrollOff;
             
             if (_settings.HideWhenAllOff && allOff)
             {
-                this.Visibility = Visibility.Hidden;
+                this.Hide();
             }
-            else
+            else if (_settings.ShowOverlay)
             {
-                this.Visibility = _settings.ShowOverlay ? Visibility.Visible : Visibility.Hidden;
+                this.Show();
             }
             
             // Auto-hide timer
@@ -188,9 +211,7 @@ namespace KeyboardLed.Views
             // This is only triggered when click-through is disabled (during position adjustment)
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-                _isDragging = true;
                 DragMove();
-                _isDragging = false;
                 
                 // Save new position
                 _settings.OverlayX = (int)this.Left;

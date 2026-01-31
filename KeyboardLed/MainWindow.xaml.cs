@@ -54,14 +54,14 @@ namespace KeyboardLed
             // Create tray context menu
             CreateTrayMenu();
             
-            // Initialize keyboard hook
+            // Initialize keyboard hook (for Ctrl+Scroll Lock workaround)
             _keyboardHook = new KeyboardHook();
-            _keyboardHook.KeyStateChanged += OnKeyStateChanged;
             _keyboardHook.Start();
             
             // Start polling timer for reliable state detection
-            _pollTimer = new System.Windows.Threading.DispatcherTimer();
-            _pollTimer.Interval = TimeSpan.FromMilliseconds(100); // Check every 100ms
+            // Csak polling-ot használunk, ez mindig a valós állapotot adja vissza
+            _pollTimer = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Send);
+            _pollTimer.Interval = TimeSpan.FromMilliseconds(16); // ~60fps, gyors reakció
             _pollTimer.Tick += PollTimer_Tick;
             _pollTimer.Start();
             
@@ -85,8 +85,33 @@ namespace KeyboardLed
                 _overlayWindow.Show();
             }
             
-            // Initial state update
+            // Initial state update - force refresh
+            _lastState = KeyboardHook.GetCurrentState();
             UpdateStateDisplay(_lastState);
+            _overlayWindow.UpdateState(_lastState);
+        }
+
+        private void PollTimer_Tick(object? sender, EventArgs e)
+        {
+            var currentState = KeyboardHook.GetCurrentState();
+            
+            // Check if state changed
+            if (currentState.NumLock != _lastState.NumLock ||
+                currentState.CapsLock != _lastState.CapsLock ||
+                currentState.ScrollLock != _lastState.ScrollLock)
+            {
+                // Beep if enabled
+                if (_settings.BeepOnChange)
+                {
+                    System.Media.SystemSounds.Beep.Play();
+                }
+                
+                UpdateStateDisplay(currentState);
+                _overlayWindow.UpdateState(currentState);
+                _overlayWindow.ShowOverlay();
+                
+                _lastState = currentState;
+            }
         }
 
         private void CreateTrayMenu()
@@ -122,17 +147,17 @@ namespace KeyboardLed
 
         private void CreateTrayIcon()
         {
-            // Create a simple icon programmatically
-            using var bitmap = new Bitmap(16, 16);
-            using var g = Graphics.FromImage(bitmap);
-            g.Clear(System.Drawing.Color.FromArgb(0, 120, 212));
-            using var greenBrush = new SolidBrush(System.Drawing.Color.LimeGreen);
-            g.FillRectangle(greenBrush, 2, 3, 5, 4);
-            g.FillRectangle(greenBrush, 9, 9, 5, 4);
-            
-            var handle = bitmap.GetHicon();
-            var icon = System.Drawing.Icon.FromHandle(handle);
-            TrayIcon.Icon = icon;
+            // Create an initial icon with current state
+            var state = KeyboardHook.GetCurrentState();
+            TrayIcon.Icon = IconHelper.CreateTrayIcon(state.NumLock, state.CapsLock, state.ScrollLock);
+        }
+        
+        private void UpdateTrayIcon(KeyboardState state)
+        {
+            // Update tray icon to reflect current LED states
+            var oldIcon = TrayIcon.Icon;
+            TrayIcon.Icon = IconHelper.CreateTrayIcon(state.NumLock, state.CapsLock, state.ScrollLock);
+            oldIcon?.Dispose();
         }
 
         private void LoadSettingsToUI()
@@ -179,24 +204,11 @@ namespace KeyboardLed
                     break;
                 }
             }
-        }
-
-        private void OnKeyStateChanged(object? sender, KeyboardState state)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                // Beep if enabled
-                if (_settings.BeepOnChange)
-                {
-                    SystemSounds.Beep.Play();
-                }
-                
-                UpdateStateDisplay(state);
-                _overlayWindow.UpdateState(state);
-                _overlayWindow.ShowOverlay();
-                
-                _lastState = state;
-            });
+            
+            // Custom names
+            TxtNumLockName.Text = _settings.NumLockName;
+            TxtCapsLockName.Text = _settings.CapsLockName;
+            TxtScrollLockName.Text = _settings.ScrollLockName;
         }
 
         private void UpdateStateDisplay(KeyboardState state)
@@ -211,6 +223,9 @@ namespace KeyboardLed
             BtnNumLock.Content = state.NumLock ? "🟢 Num Lock" : "⚪ Num Lock";
             BtnCapsLock.Content = state.CapsLock ? "🟢 Caps Lock" : "⚪ Caps Lock";
             BtnScrollLock.Content = state.ScrollLock ? "🟢 Scroll Lock" : "⚪ Scroll Lock";
+            
+            // Update tray icon with current state
+            UpdateTrayIcon(state);
             
             // Update tray menu
             _trayNumLock.IsChecked = state.NumLock;
@@ -264,6 +279,11 @@ namespace KeyboardLed
             {
                 _settings.OverlayY = posY;
             }
+            
+            // Custom names
+            _settings.NumLockName = TxtNumLockName.Text;
+            _settings.CapsLockName = TxtCapsLockName.Text;
+            _settings.ScrollLockName = TxtScrollLockName.Text;
             
             _settings.Save();
             
@@ -384,6 +404,7 @@ namespace KeyboardLed
 
         private void TrayMenu_Exit_Click(object sender, RoutedEventArgs e)
         {
+            _pollTimer.Stop();
             _keyboardHook.Dispose();
             _overlayWindow.Close();
             TrayIcon.Dispose();
