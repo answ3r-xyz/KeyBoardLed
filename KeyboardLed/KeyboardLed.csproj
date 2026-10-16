@@ -7,12 +7,17 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>KeyboardLed</AssemblyName>
     <RootNamespace>KeyboardLed</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>KeyboardLed</Authors>
-    <Description>Keyboard LED Indicator - Shows Num Lock, Caps Lock, Scroll Lock states</Description>
+    <Description>Keyboard LED Indicator - Shows Num Lock, Caps Lock, Scroll Lock and Insert states</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="KeyboardLed.Tests" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DebugType>none</DebugType>

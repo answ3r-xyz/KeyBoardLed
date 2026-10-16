@@ -2,81 +2,170 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
-        Title="Keyboard LEDs" 
-        Height="520" 
-        Width="420"
-        ResizeMode="CanMinimize"
+        xmlns:l="clr-namespace:KeyboardLed.Services"
+        xmlns:vm="clr-namespace:KeyboardLed.ViewModels"
+        Title="{l:T AppTitle}"
+        Width="720"
+        Height="740"
+        MinWidth="680"
+        MinHeight="420"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         Icon="Resources/app.ico"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        FontSize="12"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource TextBrush}"
         Closing="Window_Closing"
-        StateChanged="Window_StateChanged">
-    
-    <Grid Background="#F5F5F5">
+        StateChanged="Window_StateChanged"
+        SourceInitialized="Window_SourceInitialized">
+
+    <Window.Resources>
+        <!-- Állapot pirula: mutatja és kattintásra váltja a billentyűt -->
+        <Style x:Key="PillButton" TargetType="Button">
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PillOffBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="ToolTip" Value="{l:T PillHint}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="9,4,11,4">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Margin="0,0,6,0"
+                                         VerticalAlignment="Center"
+                                         Fill="{TemplateBinding Foreground}"/>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOn}" Value="True">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{DynamicResource PillOnBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource PillOnBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
-        <!-- Header -->
-        <Border Grid.Row="0" Background="#0078D4" Padding="15">
-            <StackPanel>
-                <TextBlock Text="⌨ Keyboard LEDs" FontSize="20" FontWeight="Bold" Foreground="White"/>
-                <TextBlock Text="Shows state of Num, Caps and Scroll locks" Foreground="#CCFFFFFF" FontSize="11" Margin="0,3,0,0"/>
-            </StackPanel>
+
+        <!-- Header: cím, élő állapot (kattintható), kilépés -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource HeaderBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="Resources/app.ico" Width="20" Height="20"
+                           VerticalAlignment="Center" Margin="0,0,9,0"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <TextBlock Text="Keyboard LEDs" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding VersionText}" Style="{StaticResource SubtleText}"
+                               VerticalAlignment="Center" Margin="8,2,0,0"/>
+                </StackPanel>
+
+                <Button DockPanel.Dock="Right"
+                        Content="{l:T Exit}"
+                        Style="{StaticResource SubtleButton}"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center"
+                        Click="BtnExit_Click"/>
+
+                <ItemsControl ItemsSource="{Binding Keys}" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource PillButton}"
+                                    Content="{Binding DisplayName}"
+                                    Command="{Binding ToggleCommand}"
+                                    Visibility="{Binding IsTracked, Converter={StaticResource BoolToVis}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
         </Border>
-        
+
         <!-- Tray Icon -->
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ToolTipText="Keyboard LEDs"
                         TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick"/>
-        
-        <!-- Main Content -->
+
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="10">
-                
-                <!-- Startup Settings -->
-                <GroupBox Header="Startup" Style="{StaticResource GroupBoxStyle}">
+            <Grid Margin="9,8,9,9">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- General -->
+                <GroupBox Grid.Row="0" Grid.Column="0" Header="{l:T GroupGeneral}">
                     <StackPanel>
-                        <CheckBox x:Name="ChkAutoStart" 
-                                  Content="Automatically run program on startup" 
-                                  Style="{StaticResource ModernCheckBox}"
-                                  Checked="ChkAutoStart_Changed" 
-                                  Unchecked="ChkAutoStart_Changed"/>
-                        <CheckBox x:Name="ChkBeepOnChange" 
-                                  Content="Beep on lock state change" 
-                                  Style="{StaticResource ModernCheckBox}"
-                                  Checked="Settings_Changed" 
-                                  Unchecked="Settings_Changed"/>
+                        <CheckBox Style="{StaticResource Switch}" Content="{l:T AutoStart}" IsChecked="{Binding AutoStart}"/>
+                        <CheckBox Style="{StaticResource Switch}" Content="{l:T ShowTrayIcon}" IsChecked="{Binding ShowTrayIcon}"
+                                  ToolTip="{l:T ShowTrayIconHint}"/>
+                        <CheckBox Style="{StaticResource Switch}" Content="{l:T TrackInsert}" IsChecked="{Binding TrackInsert}"
+                                  ToolTip="{l:T TrackInsertHint}"/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="{l:T Language}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,2"
+                                      ItemsSource="{x:Static vm:MainViewModel.LanguageOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding Language}"/>
+                            <TextBlock Grid.Row="1" Text="{l:T Theme}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,4,0,0"
+                                      ItemsSource="{x:Static vm:MainViewModel.ThemeOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding Theme}"/>
+                        </Grid>
                     </StackPanel>
                 </GroupBox>
-                
-                <!-- Current State Display -->
-                <GroupBox Header="Current State" Style="{StaticResource GroupBoxStyle}">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Border x:Name="NumLockState" Background="#32CD32" CornerRadius="5" Padding="15,8" Margin="5">
-                            <TextBlock x:Name="NumLockStateText" Text="Num Lock" Foreground="White" FontWeight="SemiBold"/>
-                        </Border>
-                        <Border x:Name="CapsLockState" Background="#FF6B6B" CornerRadius="5" Padding="15,8" Margin="5">
-                            <TextBlock x:Name="CapsLockStateText" Text="Caps Lock" Foreground="White" FontWeight="SemiBold"/>
-                        </Border>
-                        <Border x:Name="ScrollLockState" Background="#FF6B6B" CornerRadius="5" Padding="15,8" Margin="5">
-                            <TextBlock x:Name="ScrollLockStateText" Text="Scroll Lock" Foreground="White" FontWeight="SemiBold"/>
-                        </Border>
-                    </StackPanel>
-                </GroupBox>
-                
-                <!-- On Screen Display Settings -->
-                <GroupBox Header="On Screen Display (Overlay)" Style="{StaticResource GroupBoxStyle}">
+
+                <!-- Position -->
+                <GroupBox Grid.Row="0" Grid.Column="1" Header="{l:T GroupPosition}">
                     <StackPanel>
-                        <CheckBox x:Name="ChkShowOverlay" 
-                                  Content="Enable On Screen Display" 
-                                  Style="{StaticResource ModernCheckBox}"
-                                  IsChecked="True"
-                                  Checked="Settings_Changed" 
-                                  Unchecked="Settings_Changed"/>
-                        
-                        <Grid Margin="20,10,0,0">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -86,164 +175,174 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            
-                            <CheckBox Grid.Row="0" Grid.Column="0" x:Name="ChkOsdNumLock" Content="Num Lock" 
-                                      IsChecked="True" Style="{StaticResource ModernCheckBox}"
-                                      Checked="Settings_Changed" Unchecked="Settings_Changed"/>
-                            <CheckBox Grid.Row="1" Grid.Column="0" x:Name="ChkOsdCapsLock" Content="Caps Lock" 
-                                      IsChecked="True" Style="{StaticResource ModernCheckBox}"
-                                      Checked="Settings_Changed" Unchecked="Settings_Changed"/>
-                            <CheckBox Grid.Row="2" Grid.Column="0" x:Name="ChkOsdScrollLock" Content="Scroll Lock" 
-                                      IsChecked="True" Style="{StaticResource ModernCheckBox}"
-                                      Checked="Settings_Changed" Unchecked="Settings_Changed"/>
+
+                            <TextBlock Grid.Row="0" Text="{l:T Anchor}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,2"
+                                      ItemsSource="{x:Static vm:MainViewModel.AnchorOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding Anchor}"/>
+
+                            <TextBlock Grid.Row="1" Text="{l:T Monitor}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,4,0,0"
+                                      ItemsSource="{x:Static vm:MainViewModel.MonitorOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding Monitor}"
+                                      IsEnabled="{Binding IsMonitorSelectable}"/>
+
+                            <TextBlock Grid.Row="2" Text="{Binding PositionLabel}" Style="{StaticResource FieldLabel}"/>
+                            <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
+                                <Button DockPanel.Dock="Right"
+                                        Content="{l:T Drag}"
+                                        Style="{StaticResource SubtleButton}"
+                                        Margin="8,0,0,0"
+                                        Click="BtnDragOverlay_Click"
+                                        ToolTip="{l:T DragHint}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="X" Style="{StaticResource FieldLabel}" Margin="0,0,5,0"/>
+                                    <TextBox Width="54" Text="{Binding PositionX, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Y" Style="{StaticResource FieldLabel}" Margin="10,0,5,0"/>
+                                    <TextBox Width="54" Text="{Binding PositionY, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </DockPanel>
                         </Grid>
-                        
-                        <Separator Margin="0,10"/>
-                        
-                        <!-- Size and Colors -->
-                        <Grid Margin="0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="80"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Size:" VerticalAlignment="Center" Margin="0,3"/>
-                            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="CmbSize" Width="100" HorizontalAlignment="Left"
-                                      SelectionChanged="Settings_Changed">
-                                <ComboBoxItem Content="Small"/>
-                                <ComboBoxItem Content="Normal" IsSelected="True"/>
-                                <ComboBoxItem Content="Large"/>
-                            </ComboBox>
-                            
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Body Color:" VerticalAlignment="Center" Margin="0,3"/>
-                            <ComboBox Grid.Row="1" Grid.Column="1" x:Name="CmbBodyColor" Width="100" HorizontalAlignment="Left"
-                                      SelectionChanged="Settings_Changed">
-                                <ComboBoxItem Content="Lime" Tag="#32CD32" IsSelected="True"/>
-                                <ComboBoxItem Content="Blue" Tag="#0078D4"/>
-                                <ComboBoxItem Content="Red" Tag="#FF6B6B"/>
-                                <ComboBoxItem Content="Yellow" Tag="#FFD700"/>
-                                <ComboBoxItem Content="Orange" Tag="#FFA500"/>
-                                <ComboBoxItem Content="Purple" Tag="#9B59B6"/>
-                            </ComboBox>
-                            
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Text Color:" VerticalAlignment="Center" Margin="0,3"/>
-                            <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CmbTextColor" Width="100" HorizontalAlignment="Left"
-                                      SelectionChanged="Settings_Changed">
-                                <ComboBoxItem Content="White" Tag="#FFFFFF" IsSelected="True"/>
-                                <ComboBoxItem Content="Black" Tag="#000000"/>
-                            </ComboBox>
-                        </Grid>
-                        
-                        <Separator Margin="0,10"/>
-                        
-                        <!-- Custom Names -->
-                        <TextBlock Text="Custom Names:" FontWeight="SemiBold" Margin="0,5"/>
-                        <Grid Margin="0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="90"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Num Lock:" VerticalAlignment="Center" Margin="0,2"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="TxtNumLockName" Text="Num Lock" 
-                                     Margin="0,2" TextChanged="Settings_Changed"/>
-                            
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Caps Lock:" VerticalAlignment="Center" Margin="0,2"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="TxtCapsLockName" Text="Caps Lock" 
-                                     Margin="0,2" TextChanged="Settings_Changed"/>
-                            
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Scroll Lock:" VerticalAlignment="Center" Margin="0,2"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="TxtScrollLockName" Text="Scroll Lock" 
-                                     Margin="0,2" TextChanged="Settings_Changed"/>
-                        </Grid>
-                        
-                        <Separator Margin="0,10"/>
-                        
-                        <!-- Hide options -->
-                        <CheckBox x:Name="ChkHideWhenAllOff" 
-                                  Content="Hide when all OFF" 
-                                  IsChecked="True"
-                                  Style="{StaticResource ModernCheckBox}"
-                                  Checked="Settings_Changed" 
-                                  Unchecked="Settings_Changed"/>
-                        
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <CheckBox x:Name="ChkHideAfterSec" 
-                                      Content="Hide after (sec)" 
-                                      Style="{StaticResource ModernCheckBox}"
-                                      Checked="Settings_Changed" 
-                                      Unchecked="Settings_Changed"/>
-                            <TextBox x:Name="TxtHideAfterSec" 
-                                     Width="50" 
-                                     Text="1" 
-                                     Margin="10,0,0,0"
-                                     VerticalContentAlignment="Center"
-                                     TextChanged="Settings_Changed"/>
-                        </StackPanel>
-                        
-                        <!-- Opacity -->
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <TextBlock Text="Opacity:" VerticalAlignment="Center" Width="60"/>
-                            <Slider x:Name="SliderOpacity" 
-                                    Width="150" 
-                                    Minimum="10" 
-                                    Maximum="100" 
-                                    Value="80"
-                                    VerticalAlignment="Center"
-                                    ValueChanged="SliderOpacity_ValueChanged"/>
-                            <TextBlock x:Name="TxtOpacity" Text="80%" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        </StackPanel>
-                        
-                        <Separator Margin="0,10"/>
-                        
-                        <!-- Position Settings (Pixel Perfect) -->
-                        <TextBlock Text="Position (Pixel Perfect):" FontWeight="SemiBold" Margin="0,5"/>
-                        <Grid Margin="0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="40"/>
-                                <ColumnDefinition Width="80"/>
-                                <ColumnDefinition Width="40"/>
-                                <ColumnDefinition Width="80"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Grid.Column="0" Text="X:" VerticalAlignment="Center"/>
-                            <TextBox Grid.Column="1" x:Name="TxtPosX" Text="100" 
-                                     VerticalContentAlignment="Center"
-                                     TextChanged="Position_Changed"/>
-                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            <TextBox Grid.Column="3" x:Name="TxtPosY" Text="100" 
-                                     VerticalContentAlignment="Center"
-                                     TextChanged="Position_Changed"/>
-                            <Button Grid.Column="4" Content="📍 Drag" 
-                                    Margin="10,0,0,0"
-                                    Click="BtnDragOverlay_Click"
-                                    ToolTip="Click to enable dragging the overlay"/>
-                        </Grid>
-                        
+                        <TextBlock Text="{l:T PositionHint}" Style="{StaticResource SubtleText}" Margin="0,8,0,0"/>
                     </StackPanel>
                 </GroupBox>
-                
-            </StackPanel>
+
+                <!-- Per-key settings -->
+                <GroupBox Grid.Row="1" Grid.ColumnSpan="2" Header="{l:T GroupKeys}">
+                    <StackPanel Grid.IsSharedSizeScope="True">
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Key" Width="Auto"/>
+                                <ColumnDefinition Width="*" MinWidth="110"/>
+                                <ColumnDefinition SharedSizeGroup="Overlay" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="Popup" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="Sound" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="Force" Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{l:T ColKey}" Style="{StaticResource SubtleText}" Margin="0,0,12,0"/>
+                            <TextBlock Grid.Column="1" Text="{l:T ColName}" Style="{StaticResource SubtleText}"/>
+                            <TextBlock Grid.Column="2" Text="{l:T ColOverlay}" Style="{StaticResource SubtleText}" Margin="12,0"
+                                       HorizontalAlignment="Center" ToolTip="{l:T ColOverlayHint}"/>
+                            <TextBlock Grid.Column="3" Text="{l:T ColPopup}" Style="{StaticResource SubtleText}" Margin="0,0,12,0"
+                                       HorizontalAlignment="Center" ToolTip="{l:T ColPopupHint}"/>
+                            <TextBlock Grid.Column="4" Text="{l:T ColSound}" Style="{StaticResource SubtleText}"/>
+                            <TextBlock Grid.Column="5" Text="{l:T ColForce}" Style="{StaticResource SubtleText}" Margin="10,0,0,0"
+                                       ToolTip="{l:T ColForceHint}"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Keys}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,3" Visibility="{Binding IsTracked, Converter={StaticResource BoolToVis}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition SharedSizeGroup="Key" Width="Auto"/>
+                                            <ColumnDefinition Width="*" MinWidth="110"/>
+                                            <ColumnDefinition SharedSizeGroup="Overlay" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="Popup" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="Sound" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="Force" Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding KeyLabel}" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                        <TextBox Grid.Column="1" MaxLength="32"
+                                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <CheckBox Grid.Column="2" HorizontalAlignment="Center" Margin="12,0"
+                                                  IsChecked="{Binding ShowInOverlay}" ToolTip="{l:T ColOverlayHint}"/>
+                                        <CheckBox Grid.Column="3" HorizontalAlignment="Center" Margin="0,0,12,0"
+                                                  IsChecked="{Binding PopupOnChange}" ToolTip="{l:T ColPopupHint}"/>
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal">
+                                            <ComboBox Width="128"
+                                                      ItemsSource="{x:Static vm:KeyViewModel.SoundOptions}"
+                                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                                      SelectedValue="{Binding Sound}"/>
+                                            <Button Content="▶" Style="{StaticResource IconButton}" Margin="4,0,0,0"
+                                                    Command="{Binding TestSoundCommand}" IsEnabled="{Binding HasSound}"
+                                                    ToolTip="{l:T TestSound}"/>
+                                            <Button Content="…" Style="{StaticResource IconButton}" Margin="4,0,0,0"
+                                                    Command="{Binding BrowseSoundCommand}"
+                                                    ToolTip="{l:T BrowseSound}"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="5" Width="112" Margin="10,0,0,0"
+                                                  ItemsSource="{x:Static vm:KeyViewModel.ForcedOptions}"
+                                                  DisplayMemberPath="Label" SelectedValuePath="Value"
+                                                  SelectedValue="{Binding Forced}"
+                                                  Visibility="{Binding CanForce, Converter={StaticResource BoolToVis}}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- On Screen Display Settings -->
+                <GroupBox Grid.Row="2" Grid.ColumnSpan="2" Header="{l:T GroupOverlay}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="24"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <CheckBox Style="{StaticResource Switch}" Content="{l:T ShowOverlay}" IsChecked="{Binding ShowOverlay}"/>
+                            <CheckBox Style="{StaticResource Switch}" Content="{l:T HideWhenAllOff}" IsChecked="{Binding HideWhenAllOff}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox Style="{StaticResource Switch}" Content="{l:T HideAfter}" IsChecked="{Binding HideAfterSeconds}"/>
+                                <TextBox Width="40" Margin="8,0,0,0" HorizontalContentAlignment="Center"
+                                         Text="{Binding HideAfterSecondsValue, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding HideAfterSeconds}"
+                                         ToolTip="{l:T HideAfterRange}"/>
+                            </StackPanel>
+                            <CheckBox Style="{StaticResource Switch}" Content="{l:T FadeAnimation}" IsChecked="{Binding FadeAnimation}"/>
+                        </StackPanel>
+
+                        <Grid Grid.Column="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{l:T Size}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,2"
+                                      ItemsSource="{x:Static vm:MainViewModel.SizeOptions}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding OverlaySize}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="{l:T TextColor}" Style="{StaticResource FieldLabel}" Margin="12,0,10,0"/>
+                            <ComboBox Grid.Row="0" Grid.Column="3" Margin="0,2"
+                                      ItemsSource="{Binding TextColors}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding TextColor}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{l:T BodyColor}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,4,0,0"
+                                      ItemsSource="{Binding BodyColors}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding BodyColor}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="{l:T OffColor}" Style="{StaticResource FieldLabel}" Margin="12,0,10,0"/>
+                            <ComboBox Grid.Row="1" Grid.Column="3" Margin="0,4,0,0"
+                                      ItemsSource="{Binding OffColors}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Value"
+                                      SelectedValue="{Binding OffColor}"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{l:T Opacity}" Style="{StaticResource FieldLabel}"/>
+                            <DockPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding OpacityText}" Width="36"
+                                           TextAlignment="Right" VerticalAlignment="Center"/>
+                                <Slider Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                                        Value="{Binding OverlayOpacity}"/>
+                            </DockPanel>
+                        </Grid>
+                    </Grid>
+                </GroupBox>
+            </Grid>
         </ScrollViewer>
-        
-        <!-- Footer with Toggle Buttons -->
-        <Border Grid.Row="2" Background="#E8E8E8" Padding="10">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button x:Name="BtnNumLock" Content="⚪ Num Lock" Margin="5" Style="{StaticResource ModernButton}" Click="BtnNumLock_Click"/>
-                <Button x:Name="BtnCapsLock" Content="⚪ Caps Lock" Margin="5" Style="{StaticResource ModernButton}" Click="BtnCapsLock_Click"/>
-                <Button x:Name="BtnScrollLock" Content="⚪ Scroll Lock" Margin="5" Style="{StaticResource ModernButton}" Click="BtnScrollLock_Click"/>
-            </StackPanel>
-        </Border>
     </Grid>
 </Window>

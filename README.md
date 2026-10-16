@@ -1,76 +1,80 @@
 # Keyboard LEDs
 
-A Windows alkalmazás ami megjeleníti a Num Lock, Caps Lock és Scroll Lock billentyűk állapotát.
+Windows tálcaalkalmazás, ami megjeleníti a Num Lock, Caps Lock, Scroll Lock (és opcionálisan az Insert) billentyűk állapotát – tálcaikonon és egy mindig felül lévő, képernyős kijelzőn (overlay).
 
 ## Funkciók
 
-- ⌨️ **Num Lock, Caps Lock, Scroll Lock állapot kijelzése**
-- 🖥️ **Always-on-top overlay** - minden ablak felett megjelenik
-- 📍 **Pixelre pontos pozícionálás** - állítsd be pontosan, hol jelenjen meg az overlay
-- 🚀 **Automatikus indulás** - PC bekapcsolásakor automatikusan elindul
-- 🔔 **Beep hangjelzés** - állapotváltáskor hangjelzés
-- 🎨 **Testreszabható megjelenés** - színek, méret, átlátszóság
-- 📊 **System tray ikon** - minimális erőforrás-használat háttérben
+- ⌨️ **Num Lock, Caps Lock, Scroll Lock és Insert** állapot kijelzése, kattintással váltható állapot-pirulák
+- 🖥️ **Always-on-top overlay** – nem veszi el a fókuszt, átkattintható, képernyőfelvételből kimarad
+- 📍 **Pozicionálás** – sarokhoz/élhez rögzítés eltolással, vagy pontos X/Y pixel; elsődleges monitor, az egér monitora vagy az aktív ablak monitora; lecsatolt monitor esetén visszahúzza a képernyőre
+- 🔔 **Billentyűnkénti beállítások** – saját név, megjelenjen-e az overlayen, felugorjon-e váltáskor, saját hang (rendszerhang vagy egyéni .wav)
+- 🔒 **Állapot kényszerítése** – pl. „Num Lock mindig BE”, „Caps Lock mindig KI”
+- 🌗 **Világos / sötét téma** – követi a Windows beállítást (sötét címsorral), a tálcaikon a tálca témájához igazodik
+- 🔎 **Éles tálcaikon** minden DPI-n (Per-Monitor V2 DPI aware)
+- 🌐 **Magyar / angol felület**, futás közben váltható
+- ✨ **Áttűnés animáció**, automatikus elrejtés, „elrejtés ha minden KI”
+- 🚀 **Automatikus indulás** a Windows-zal, egyszerre csak egy példány fut
 
-## Telepítés
+## Futtatás
 
-### Előfeltételek
+A kész program a `dist\KeyboardLed.exe`. Két változat készíthető:
 
-1. **.NET 8.0 SDK** telepítése szükséges:
-   - Töltsd le innen: https://dotnet.microsoft.com/download/dotnet/8.0
-   - Válaszd a ".NET SDK x64" verziót Windows-ra
-   - Telepítés után nyiss új terminált
+| Változat | Méret | Követelmény |
+|----------|-------|-------------|
+| `dist\KeyboardLed.exe` | ~0,5 MB | [.NET 8 Desktop Runtime (x64)](https://dotnet.microsoft.com/download/dotnet/8.0) |
+| `dist\self-contained\KeyboardLed.exe` | ~70 MB | nincs, bárhol fut |
 
-### Build és futtatás
+Ha a program már fut, az exe újbóli elindítása megnyitja a beállítások ablakát (akkor is, ha a tálcaikon el van rejtve).
 
-```powershell
-# Navigálj a projekt mappába
-cd c:\Users\Peter\Documents\GitHub\KeyBoardLed\KeyboardLed
+## Build
 
-# Restore (csomagok letöltése)
-dotnet restore
-
-# Build
-dotnet build
-
-# Futtatás
-dotnet run
-```
-
-### Release build készítése
+Előfeltétel: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained false
+# Tesztek + framework-dependent exe a dist mappába
+.\build.ps1
+
+# Önálló (self-contained) exe, .NET telepítés nélkül fut
+.\build.ps1 -SelfContained
 ```
 
-A kész alkalmazás itt lesz: `bin\Release\net8.0-windows\win-x64\publish\KeyboardLed.exe`
+Fejlesztés közben:
+
+```powershell
+dotnet run --project KeyboardLed
+dotnet test KeyboardLed.Tests
+```
 
 ## Használat
 
-1. **Beállítások ablak**: Dupla klikk a tálcaikonon vagy jobb klikk → "Show Settings"
-2. **Overlay pozícionálás**: 
-   - Írd be pontosan az X és Y koordinátákat, vagy
-   - Kattints a "📍 Drag" gombra és húzd az overlay-t a kívánt helyre
-3. **Automatikus indulás**: Pipáld be az "Automatically run program on startup" opciót
-4. **Minimalizálás**: Az ablak bezárása a tálcára minimalizálja a programot
+1. **Beállítások ablak**: dupla klikk a tálcaikonon, jobb klikk → „Beállítások megnyitása”, vagy az exe újbóli elindítása
+2. **Billentyű váltása**: kattints a fejlécben az állapot-pirulára, vagy a tálcamenüben a billentyű nevére
+3. **Overlay pozícionálás**: válassz rögzítési sarkot és eltolást, vagy a „📍 Húzás” gombbal húzd a helyére
+4. **Bezárás**: az ablak bezárása a tálcára rejti a programot; kilépni a „Kilépés” gombbal vagy a tálcamenüből lehet
 
 ## Beállítások
 
+A beállítások helye: `%AppData%\KeyboardLed\settings.json` (a régi formátumú fájlt a program automatikusan átalakítja).
+
 | Beállítás | Leírás |
 |-----------|--------|
-| Auto Start | Program induljon a Windows-szal |
-| Beep on Change | Hangjelzés állapotváltáskor |
-| Show Overlay | OSD overlay be/ki |
-| Hide when all OFF | Elrejtés ha minden ki van kapcsolva |
-| Opacity | Átlátszóság (10-100%) |
-| Position X/Y | Pixelre pontos pozíció |
+| Indítás a Windows-zal | Automatikus indulás bejelentkezéskor (tálcára rejtve) |
+| Tálcaikon megjelenítése | Tálcaikon be/ki |
+| Insert billentyű figyelése | Insert állapot kijelzése |
+| Nyelv / Téma | Automatikus, magyar/angol; rendszer, világos/sötét |
+| Billentyűk | Név, overlay, felugrás, hang, kényszerítés billentyűnként |
+| Képernyős kijelző | Be/ki, elrejtés ha minden KI, automatikus elrejtés (1–60 mp), áttűnés |
+| Méret / színek / láthatóság | Overlay megjelenés |
+| Rögzítés / monitor / eltolás | Overlay pozíció (fizikai pixelben) |
 
-## Optimalizálás
+## Hibakeresés
 
-- Alacsony memória-használat (~20MB)
-- Minimális CPU terhelés (< 1%)
-- Hatékony keyboard hook
-- Nincs polling - csak eseményvezérelt frissítés
+A program naplót ír ide: `%AppData%\KeyboardLed\keyboardled.log`. Váratlan hiba esetén a program tovább fut, és egyszer figyelmeztet a napló helyére.
+
+## Működés
+
+- Az állapotot egy low-level billentyűzet hook eseményei frissítik azonnal; mellette csak egy ritka (500 ms-os) tartalék lekérdezés fut arra az esetre, ha emelt jogú ablak van fókuszban, vagy más program váltja a LED-et.
+- A Ctrl+Scroll Lock (Break) nem váltja a Scroll Lock-ot Windows alatt – a program ezt pótolja.
 
 ## Licenc
 

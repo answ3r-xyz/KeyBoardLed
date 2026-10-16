@@ -64,3 +64,6 @@ $RECYCLE.BIN/
 
 # Publish output
 publish/
+
+# Local build output (build.ps1)
+dist/

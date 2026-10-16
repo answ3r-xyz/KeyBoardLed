@@ -1,65 +1,57 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Windows;
+using KeyboardLed.Models;
 
 namespace KeyboardLed.Services
 {
     /// <summary>
-    /// Struct a heap allokáció elkerülésére - minden polling-nál újrahasználható
+    /// Billentyűzet LED állapot lekérdezése a Windows-tól.
     /// </summary>
-    public readonly struct KeyboardState
+    public static class KeyStateReader
     {
-        // Bit layout az index-hez - csak itt van definiálva
-        private const int NumLockBit = 1;
-        private const int CapsLockBit = 2;
-        private const int ScrollLockBit = 4;
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
 
-        /// <summary>
-        /// Lehetséges állapotok száma (2^3)
-        /// </summary>
-        public const int StateCount = 8;
+        public static bool IsToggled(LockKey key) => (GetKeyState(LockKeys.VirtualKey(key)) & 1) != 0;
 
-        public bool NumLock { get; init; }
-        public bool CapsLock { get; init; }
-        public bool ScrollLock { get; init; }
-
-        /// <summary>
-        /// Index alapú elérés a cached icon-okhoz (0-7)
-        /// </summary>
-        public int ToIndex() =>
-            (NumLock ? NumLockBit : 0) | (CapsLock ? CapsLockBit : 0) | (ScrollLock ? ScrollLockBit : 0);
-
-        /// <summary>
-        /// Állapot visszaállítása index-ből (ToIndex inverze)
-        /// </summary>
-        public static KeyboardState FromIndex(int index) => new KeyboardState
+        public static KeyboardState GetCurrentState(bool includeInsert) => new()
         {
-            NumLock = (index & NumLockBit) != 0,
-            CapsLock = (index & CapsLockBit) != 0,
-            ScrollLock = (index & ScrollLockBit) != 0
+            NumLock = IsToggled(LockKey.NumLock),
+            CapsLock = IsToggled(LockKey.CapsLock),
+            ScrollLock = IsToggled(LockKey.ScrollLock),
+            Insert = includeInsert && IsToggled(LockKey.Insert)
         };
-
-        public bool Equals(KeyboardState other) => 
-            NumLock == other.NumLock && CapsLock == other.CapsLock && ScrollLock == other.ScrollLock;
     }
 
     /// <summary>
-    /// Keyboard állapot olvasó polling-gal és Ctrl+Scroll Lock workaround-dal.
+    /// Low-level keyboard hook: jelzi a lock billentyűk leütését (eseményvezérelt frissítéshez),
+    /// lenyeli a kényszerített billentyűk leütését, és kezeli a Ctrl+Scroll Lock workaround-ot.
     /// </summary>
-    public class KeyboardHook : IDisposable
+    public sealed class KeyboardHook : IDisposable
     {
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
         private const int WM_SYSKEYDOWN = 0x0104;
-        
-        // Virtual key codes
-        private const int VK_NUMLOCK = 0x90;
-        private const int VK_CAPITAL = 0x14;
-        private const int VK_SCROLL = 0x91;
+        private const int WM_SYSKEYUP = 0x0105;
         private const int VK_CANCEL = 0x03;  // Ctrl+Scroll Lock = Break
 
         private readonly LowLevelKeyboardProc _proc;
+        private readonly bool[] _isDown = new bool[LockKeys.All.Length];
+        private readonly bool[] _swallowedDown = new bool[LockKeys.All.Length];
         private IntPtr _hookId = IntPtr.Zero;
         private bool _disposed;
+
+        /// <summary>
+        /// Lock billentyű esemény történt (a UI szálon fut, gyorsnak kell lennie).
+        /// </summary>
+        public event Action? LockKeyActivity;
+
+        /// <summary>
+        /// Visszaadja egy billentyű kényszerített állapotát.
+        /// </summary>
+        public Func<LockKey, ForcedState>? ForcedStateProvider { get; set; }
 
         public KeyboardHook()
         {
@@ -71,6 +63,10 @@ namespace KeyboardLed.Services
             if (_hookId == IntPtr.Zero)
             {
                 _hookId = SetHook(_proc);
+                if (_hookId == IntPtr.Zero)
+                {
+                    Log.Warn($"SetWindowsHookEx failed (error {Marshal.GetLastWin32Error()}), falling back to polling only");
+                }
             }
         }
 
@@ -83,38 +79,7 @@ namespace KeyboardLed.Services
             }
         }
 
-        [DllImport("user32.dll")]
-        private static extern short GetKeyState(int nVirtKey);
-
-        [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
-        private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
-        private const uint KEYEVENTF_KEYUP = 0x0002;
-
-        /// <summary>
-        /// Aktuális billentyűzet LED állapot lekérdezése a Windows-tól.
-        /// </summary>
-        public static KeyboardState GetCurrentState()
-        {
-            return new KeyboardState
-            {
-                NumLock = (GetKeyState(VK_NUMLOCK) & 1) != 0,
-                CapsLock = (GetKeyState(VK_CAPITAL) & 1) != 0,
-                ScrollLock = (GetKeyState(VK_SCROLL) & 1) != 0
-            };
-        }
-
-        /// <summary>
-        /// Scroll Lock toggle szimulálása (Ctrl+Scroll Lock workaround)
-        /// </summary>
-        private static void SimulateScrollLockToggle()
-        {
-            keybd_event(VK_SCROLL, 0x46, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero);
-            keybd_event(VK_SCROLL, 0x46, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero);
-        }
-
-        private IntPtr SetHook(LowLevelKeyboardProc proc)
+        private static IntPtr SetHook(LowLevelKeyboardProc proc)
         {
             using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
             using var curModule = curProcess.MainModule;
@@ -125,23 +90,64 @@ namespace KeyboardLed.Services
         {
             if (nCode >= 0)
             {
-                int vkCode = Marshal.ReadInt32(lParam);
-                int msg = (int)wParam;
-                
-                // Ctrl+Scroll Lock (Break) workaround
-                // Ha Break-et kapunk, szimuláljuk a Scroll Lock toggle-t
-                if (vkCode == VK_CANCEL && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN))
+                try
                 {
-                    // Scroll Lock toggle szimulálása
-                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(
-                        System.Windows.Threading.DispatcherPriority.Send,
-                        new Action(() =>
+                    int vkCode = Marshal.ReadInt32(lParam);
+                    int msg = (int)wParam;
+                    bool isDown = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
+                    bool isUp = msg == WM_KEYUP || msg == WM_SYSKEYUP;
+
+                    if (vkCode == VK_CANCEL && isDown)
+                    {
+                        // Ctrl+Scroll Lock (Break) nem váltja a Scroll Lock-ot, ezért szimuláljuk.
+                        // Nem a hook callback-ben injektálunk, hanem utána.
+                        Application.Current?.Dispatcher.BeginInvoke(
+                            new Action(() => KeyboardInput.Toggle(LockKey.ScrollLock)));
+                    }
+                    else if (LockKeys.FromVirtualKey(vkCode) is LockKey key)
+                    {
+                        if (ShouldSwallow(key, isDown, isUp))
                         {
-                            SimulateScrollLockToggle();
-                        }));
+                            return (IntPtr)1;
+                        }
+                        LockKeyActivity?.Invoke();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Keyboard hook callback failed");
                 }
             }
             return CallNextHookEx(_hookId, nCode, wParam, lParam);
+        }
+
+        private bool ShouldSwallow(LockKey key, bool isDown, bool isUp)
+        {
+            int i = (int)key;
+            if (isDown)
+            {
+                // Auto-repeat: a kezdeti lenyomásnál hozott döntés marad érvényben
+                if (_isDown[i])
+                {
+                    return _swallowedDown[i];
+                }
+
+                _isDown[i] = true;
+                var forced = ForcedStateProvider?.Invoke(key) ?? ForcedState.None;
+                _swallowedDown[i] = ForcedStateRules.ShouldBlockToggle(forced, KeyStateReader.IsToggled(key));
+                return _swallowedDown[i];
+            }
+
+            if (isUp)
+            {
+                // Csak akkor nyeljük le a felengedést, ha a lenyomást is lenyeltük
+                bool swallowed = _swallowedDown[i];
+                _isDown[i] = false;
+                _swallowedDown[i] = false;
+                return swallowed;
+            }
+
+            return false;
         }
 
         public void Dispose()
@@ -151,7 +157,6 @@ namespace KeyboardLed.Services
                 Stop();
                 _disposed = true;
             }
-            GC.SuppressFinalize(this);
         }
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);

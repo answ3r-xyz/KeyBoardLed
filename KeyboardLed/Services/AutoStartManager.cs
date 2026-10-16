@@ -8,6 +8,15 @@ namespace KeyboardLed.Services
         private const string AppName = "KeyboardLed";
         private const string RegistryPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
 
+        private static string Command
+        {
+            get
+            {
+                var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory + "KeyboardLed.exe";
+                return $"\"{exePath}\" --minimized";
+            }
+        }
+
         public static bool IsAutoStartEnabled()
         {
             try
@@ -15,8 +24,9 @@ namespace KeyboardLed.Services
                 using var key = Registry.CurrentUser.OpenSubKey(RegistryPath, false);
                 return key?.GetValue(AppName) != null;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Warn("Could not read autostart registry value", ex);
                 return false;
             }
         }
@@ -30,17 +40,37 @@ namespace KeyboardLed.Services
 
                 if (enable)
                 {
-                    var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory + "KeyboardLed.exe";
-                    key.SetValue(AppName, $"\"{exePath}\" --minimized");
+                    key.SetValue(AppName, Command);
                 }
                 else
                 {
                     key.DeleteValue(AppName, false);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore registry errors
+                Log.Error(ex, "Could not change autostart registry value");
+            }
+        }
+
+        /// <summary>
+        /// Ha az exe-t áthelyezték, az automatikus indítás a régi útvonalra mutatna - frissítjük
+        /// </summary>
+        public static void RefreshPathIfEnabled()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(RegistryPath, true);
+                if (key?.GetValue(AppName) is string current &&
+                    !string.Equals(current, Command, StringComparison.OrdinalIgnoreCase))
+                {
+                    key.SetValue(AppName, Command);
+                    Log.Info($"Autostart path updated: {Command}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Could not refresh autostart path", ex);
             }
         }
     }
