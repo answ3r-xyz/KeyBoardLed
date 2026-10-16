@@ -112,9 +112,7 @@ namespace KeyboardLed
             var currentState = KeyboardHook.GetCurrentState();
             
             // Check if state changed
-            if (currentState.NumLock != _lastState.NumLock ||
-                currentState.CapsLock != _lastState.CapsLock ||
-                currentState.ScrollLock != _lastState.ScrollLock)
+            if (!currentState.Equals(_lastState))
             {
                 // Beep if enabled
                 if (_settings.BeepOnChange)

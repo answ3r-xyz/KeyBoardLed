@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Runtime.InteropServices;
 
 namespace KeyboardLed.Services
 {
@@ -11,8 +12,12 @@ namespace KeyboardLed.Services
     public static class IconHelper
     {
         // Cached icons - 8 lehetséges állapot (2^3)
-        private static readonly Icon[] _cachedIcons = new Icon[8];
+        private static readonly Icon[] _cachedIcons = new Icon[KeyboardState.StateCount];
         private static bool _initialized;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
         
         // Cached colors
         private static readonly Color OnColor = Color.FromArgb(50, 255, 100);
@@ -26,12 +31,9 @@ namespace KeyboardLed.Services
         {
             if (_initialized) return;
             
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < KeyboardState.StateCount; i++)
             {
-                bool num = (i & 1) != 0;
-                bool caps = (i & 2) != 0;
-                bool scroll = (i & 4) != 0;
-                _cachedIcons[i] = CreateIconInternal(num, caps, scroll);
+                _cachedIcons[i] = CreateIconInternal(KeyboardState.FromIndex(i));
             }
             _initialized = true;
         }
@@ -49,17 +51,13 @@ namespace KeyboardLed.Services
         /// Visszaad egy cached ikont bool értékek alapján
         /// </summary>
         public static Icon GetTrayIcon(bool numLock, bool capsLock, bool scrollLock)
-        {
-            if (!_initialized) Initialize();
-            int index = (numLock ? 1 : 0) | (capsLock ? 2 : 0) | (scrollLock ? 4 : 0);
-            return _cachedIcons[index];
-        }
+            => GetTrayIcon(new KeyboardState { NumLock = numLock, CapsLock = capsLock, ScrollLock = scrollLock });
         
         // Legacy compatibility
         public static Icon CreateTrayIcon(bool numLock = true, bool capsLock = false, bool scrollLock = false)
             => GetTrayIcon(numLock, capsLock, scrollLock);
         
-        private static Icon CreateIconInternal(bool numLock, bool capsLock, bool scrollLock)
+        private static Icon CreateIconInternal(KeyboardState state)
         {
             using var bitmap = new Bitmap(16, 16);
             using var g = Graphics.FromImage(bitmap);
@@ -76,12 +74,22 @@ namespace KeyboardLed.Services
             using var onBrush = new SolidBrush(OnColor);
             using var offBrush = new SolidBrush(OffColor);
             
-            g.FillRectangle(numLock ? onBrush : offBrush, x, 2, barWidth, barHeight);
-            g.FillRectangle(capsLock ? onBrush : offBrush, x, 2 + barHeight + gap, barWidth, barHeight);
-            g.FillRectangle(scrollLock ? onBrush : offBrush, x, 2 + (barHeight + gap) * 2, barWidth, barHeight);
-            
+            g.FillRectangle(state.NumLock ? onBrush : offBrush, x, 2, barWidth, barHeight);
+            g.FillRectangle(state.CapsLock ? onBrush : offBrush, x, 2 + barHeight + gap, barWidth, barHeight);
+            g.FillRectangle(state.ScrollLock ? onBrush : offBrush, x, 2 + (barHeight + gap) * 2, barWidth, barHeight);
+
+            // Icon.FromHandle nem birtokolja a HICON-t, ezért Dispose nem szabadítaná fel.
+            // Clone() saját (owned) másolatot készít, az eredeti handle-t azonnal felszabadítjuk.
             IntPtr hIcon = bitmap.GetHicon();
-            return Icon.FromHandle(hIcon);
+            try
+            {
+                using var unowned = Icon.FromHandle(hIcon);
+                return (Icon)unowned.Clone();
+            }
+            finally
+            {
+                DestroyIcon(hIcon);
+            }
         }
         
         /// <summary>
@@ -95,6 +103,7 @@ namespace KeyboardLed.Services
             {
                 icon?.Dispose();
             }
+            Array.Clear(_cachedIcons);
             _initialized = false;
         }
     }

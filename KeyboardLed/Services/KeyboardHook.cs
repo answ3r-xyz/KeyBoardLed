@@ -8,15 +8,36 @@ namespace KeyboardLed.Services
     /// </summary>
     public readonly struct KeyboardState
     {
+        // Bit layout az index-hez - csak itt van definiálva
+        private const int NumLockBit = 1;
+        private const int CapsLockBit = 2;
+        private const int ScrollLockBit = 4;
+
+        /// <summary>
+        /// Lehetséges állapotok száma (2^3)
+        /// </summary>
+        public const int StateCount = 8;
+
         public bool NumLock { get; init; }
         public bool CapsLock { get; init; }
         public bool ScrollLock { get; init; }
-        
+
         /// <summary>
         /// Index alapú elérés a cached icon-okhoz (0-7)
         /// </summary>
-        public int ToIndex() => (NumLock ? 1 : 0) | (CapsLock ? 2 : 0) | (ScrollLock ? 4 : 0);
-        
+        public int ToIndex() =>
+            (NumLock ? NumLockBit : 0) | (CapsLock ? CapsLockBit : 0) | (ScrollLock ? ScrollLockBit : 0);
+
+        /// <summary>
+        /// Állapot visszaállítása index-ből (ToIndex inverze)
+        /// </summary>
+        public static KeyboardState FromIndex(int index) => new KeyboardState
+        {
+            NumLock = (index & NumLockBit) != 0,
+            CapsLock = (index & CapsLockBit) != 0,
+            ScrollLock = (index & ScrollLockBit) != 0
+        };
+
         public bool Equals(KeyboardState other) => 
             NumLock == other.NumLock && CapsLock == other.CapsLock && ScrollLock == other.ScrollLock;
     }
